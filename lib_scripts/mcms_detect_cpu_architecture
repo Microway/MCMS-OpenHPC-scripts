@@ -1,0 +1,89 @@
+#!/bin/bash
+################################################################################
+######################## Microway Cluster Management Software (MCMS) for OpenHPC
+################################################################################
+#
+# Copyright (c) 2015 by Microway, Inc.
+#
+# This file is part of Microway Cluster Management Software (MCMS) for OpenHPC.
+#
+#    MCMS for OpenHPC is free software: you can redistribute it and/or modify
+#    it under the terms of the GNU General Public License as published by
+#    the Free Software Foundation, either version 3 of the License, or
+#    (at your option) any later version.
+#
+#    MCMS for OpenHPC is distributed in the hope that it will be useful,
+#    but WITHOUT ANY WARRANTY; without even the implied warranty of
+#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#    GNU General Public License for more details.
+#
+#    You should have received a copy of the GNU General Public License
+#    along with MCMS.  If not, see <http://www.gnu.org/licenses/>
+#
+################################################################################
+
+
+################################################################################
+#
+# Detect the CPU microarchitecture of the current system.
+#
+# The values below are used to set reasonable defaults when compiling and
+# configuring math libraries and certain applications (such as OpenBLAS).
+# Some require recompiles; some can be over-ridden at runtime.
+#
+# Currently supported options:
+#
+#   x86_64                         (generic)
+#   x86_64__AMD-Bulldozer          (optimized)
+#   x86_64__AMD-Piledriver         (optimized)
+#   x86_64__Intel-SandyBridge      (optimized)
+#   x86_64__Intel-IvyBridge        (optimized)
+#   x86_64__Intel-Haswell          (optimized)
+#
+################################################################################
+
+
+# Check environment health
+source "/usr/libexec/mcms/include.sh" || echo "
+
+Unable to read the MCMS script library - does /usr/libexec/mcms/include.sh exist?
+
+"; exit 1
+mcms_check_exe grep
+
+
+cpufile=/proc/cpuinfo
+if [[ ! -f $cpufile ]]; then
+    log_error "Error - unable to read CPU info file: $cpufile"
+fi
+
+# Grab the CPU model and family (which determine the exact architecture).
+cpuinfo_model=( $(grep -m1 "model" $cpufile) )
+cpuinfo_model=${cpuinfo_model[2]}
+cpuinfo_family=( $(grep -m1 "family" $cpufile) )
+cpuinfo_family=${cpuinfo_family[3]}
+
+# If possible, determine the exact generation of the CPU(s)
+cpu_architecture="unknown"
+if [[ $cpuinfo_family -eq 6 ]]; then
+    cpu_architecture="x86_64"
+
+    if [[ $cpuinfo_model -eq 45 ]]; then
+        cpu_architecture="x86_64__Intel-SandyBridge"
+    elif [[ $cpuinfo_model -eq 62 ]]; then
+        cpu_architecture="x86_64__Intel-IvyBridge"
+    elif [[ $cpuinfo_model -eq 63 ]]; then
+        cpu_architecture="x86_64__Intel-Haswell"
+    fi
+elif [[ $cpuinfo_family -eq 21 ]]; then
+    cpu_architecture="x86_64"
+
+    if [[ $cpuinfo_model -eq 2 ]]; then
+        cpu_architecture="x86_64__AMD-Piledriver"
+    elif [[ $cpuinfo_model -eq 1 ]]; then
+        cpu_architecture="x86_64__AMD-Bulldozer"
+    fi
+fi
+
+echo $cpu_architecture
+
