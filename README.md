@@ -12,8 +12,9 @@ HPC cluster built using the OpenHPC framework. Shortcuts are provided for common
 tasks (e.g., user creation/deletion, querying nodes/partitions, etc.).
 
 ### Installation
-These scripts should be placed into the system path. Scripts which are typically
-run by administrators should be kept separate from the users (e.g., bin/sbin).
+These scripts are placed into the system paths. Scripts which are typically run
+by administrators are kept separate from scripts intended from regular users
+(i.e., user scripts are in `bin/` and admin scripts are in `sbin/`).
 
 ### More Information
 To learn more about OpenHPC, visit:
