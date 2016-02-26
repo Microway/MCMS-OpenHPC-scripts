@@ -16,7 +16,23 @@ These scripts are placed into the system paths. Scripts which are typically run
 by administrators are kept separate from scripts intended from regular users
 (i.e., user scripts are in `bin/` and admin scripts are in `sbin/`).
 
+An RPM can be created by running the following from the current directory:
+```
+fpm -t rpm -s dir -a all --prefix=/usr                                   \
+    --name mcms_openhpc_scripts -v **version**                           \
+    --vendor Microway --license GPLv3                                    \
+    --url https://github.com/Microway/mcms_openhpc_scripts               \
+    --description 'Scripts to simplify usage of an OpenHPC cluster'      \
+    bin/ libexec/ sbin/
+```
+
+A DEB can be created by replacing the `-t rpm` above with `-t deb`.
+
 ### More Information
+If you would like to purchase professional support/services for an OpenHPC
+cluster, or to fund development of a new feature, please visit:
+https://www.microway.com/contact/
+
 To learn more about OpenHPC, visit:
 http://www.openhpc.community/
 
