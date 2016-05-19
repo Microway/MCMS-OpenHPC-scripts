@@ -29,11 +29,11 @@
 # This 'library' script should not be called directly.
 # Include it in your scripts with:
 #
-#    source "/usr/libexec/mcms/include.sh" || echo "
+#    source "/usr/libexec/mcms/include.sh" || (echo "
 #
 #    Unable to read the MCMS script library - does /usr/libexec/mcms/include.sh exist?
 #
-#    "; exit 1
+#    "; exit 1)
 #
 ################################################################################
 
@@ -99,7 +99,6 @@ source "/usr/libexec/mcms/lib.trap.sh"
 source "/usr/libexec/mcms/lib.echo.sh"
 source "/usr/libexec/mcms/lib.sanity.sh"
 source "/usr/libexec/mcms/lib.config.sh"
-source "/usr/libexec/mcms/lib.modules.sh"
 
 
 # Enable the requested library features
@@ -114,6 +113,7 @@ for tag in ${mcms_tags[@]}; do
         source "/usr/libexec/mcms/lib.numa.sh"
     elif [[ $tag == "platform" ]]; then
         source "/usr/libexec/mcms/lib.platform.sh"
+    fi
 done
 
 
