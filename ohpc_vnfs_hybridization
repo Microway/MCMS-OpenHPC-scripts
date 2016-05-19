@@ -1,0 +1,170 @@
+#!/bin/bash
+################################################################################
+######################## Microway Cluster Management Software (MCMS) for OpenHPC
+################################################################################
+#
+# Copyright (c) 2016 by Microway, Inc.
+#
+# This file is part of Microway Cluster Management Software (MCMS) for OpenHPC.
+#
+#    MCMS for OpenHPC is free software: you can redistribute it and/or modify
+#    it under the terms of the GNU General Public License as published by
+#    the Free Software Foundation, either version 3 of the License, or
+#    (at your option) any later version.
+#
+#    MCMS for OpenHPC is distributed in the hope that it will be useful,
+#    but WITHOUT ANY WARRANTY; without even the implied warranty of
+#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#    GNU General Public License for more details.
+#
+#    You should have received a copy of the GNU General Public License
+#    along with MCMS.  If not, see <http://www.gnu.org/licenses/>
+#
+################################################################################
+
+
+################################################################################
+#
+# Assist with hybridization of compute node images - the images shouldn't grow
+# too large, as that hogs memory. This tool examines which portions of the node
+# image have already been hybridized and makes further suggestions.
+#
+################################################################################
+
+VNFS_NAME="default-compute-node"
+VNFS_SUBDIR=""
+FILE_COUNT=20
+
+
+# Check environment health
+source "/usr/libexec/mcms/include.sh" || (echo "
+
+Unable to read the MCMS script library - does /usr/libexec/mcms/include.sh exist?
+
+"; exit 1)
+mcms_check_exe awk cat cut du find grep sed sort tail wwsh xargs
+
+
+function help() {
+    echo
+    echo -e "Examine OpenHPC/Warewulf VNFS images to suggest memory space savings."
+    echo
+    echo -e "Usage: `basename $0` [options]"
+    echo
+    echo -e "Optional arguments:"
+    echo -e "\t -c: number of files and directories to suggest (default: ${FILE_COUNT})"
+    echo -e "\t -d: subdirectory of the VNFS to explore"
+    echo -e "\t -n: name of the VNFS to examine - available options:"
+    # List available Warewulf VNFS images
+    wwsh vnfs list | awk '!/VNFS NAME/ {print "\t\t",$1}'
+
+    echo
+    echo "Copyright (c) 2016 by Microway, Inc."
+    echo "This software is released under the GNU General Public License v3"
+    echo
+}
+
+function parse_options() {
+    while getopts ":c:d:h:n:" opt; do
+        case $opt in
+            c)
+                # make sure -c is passed a valid integer
+                if ! [[ "$OPTARG" =~ ^[0-9]+$ ]]; then
+                    log_error "You must specify an integer after the option '-c'"
+                fi
+
+                FILE_COUNT=$OPTARG
+                ;;
+            d)
+                VNFS_SUBDIR=$OPTARG
+                ;;
+            n)
+                VNFS_NAME=$OPTARG
+
+                # make sure a valid VNFS name was passed
+                output=$(wwsh vnfs list | awk "/$VNFS_NAME/")
+
+                if [[ -z "$output" ]]; then
+                    wwsh_vnfs_list=$(wwsh vnfs list | awk '!/VNFS NAME/ {print $0}')
+                    log_error "There is not a VNFS image named '$VNFS_NAME'." \
+                              "\nAvailable options:" \
+                              "\n\nVNFS NAME            SIZE (M) CHROOT LOCATION" \
+                              "\n${wwsh_vnfs_list}"
+                fi
+                ;;
+            h)
+                help
+                exit 0
+                ;;
+            \?|:)
+                help
+                exit 1
+                ;;
+        esac
+    done
+}
+
+# Parse the command line options
+parse_options "$@"
+
+
+vnfs_dir=$(wwsh vnfs list | grep ${VNFS_NAME} | awk '{print $3}')
+if [[ ! -d $vnfs_dir ]]; then
+    log_error "The requested directory $vnfs_dir does not exist!"
+fi
+
+echo
+echo "Examining compute node image '${VNFS_NAME}' in ${vnfs_dir}"
+if [[ "$VNFS_SUBDIR" != "" ]]; then
+    echo "Looking only in the subdirectory ${VNFS_SUBDIR}"
+fi
+echo
+
+
+# Get the current list of excludes and hybrid paths from Warewulf
+current_excludes=$(
+    cat /etc/warewulf/vnfs.conf /etc/warewulf/vnfs/${VNFS_NAME}.conf |
+    awk '/^(hybridize|exclude)/ {print}' |
+    sed -r 's/^(hybridize|exclude)\s+\+=\s+/./' |
+    # Warewulf makes a subtle distinction when asterisks are at the end of
+    # paths, however we do not make such a distinction. Strip them.
+    sed 's/\*//' |
+    # Strip trailing slashes in directory names (which can confuse grep)
+    sed 's/\/$//'
+)
+
+
+echo -n "Current list of excludes and hybrid paths: "
+echo $current_excludes
+echo
+
+
+# Get a list of the files and directories sorted by size (smallest to largest)
+# Remove any files and directories which have already been excluded
+directories_by_size=$(cd ${vnfs_dir};
+    find .${VNFS_SUBDIR} -type d -print0 | xargs -0 du | sort -un | cut -f2 |
+    grep -v -F "$current_excludes" |
+    tail -n ${FILE_COUNT} |
+    xargs -I{} du -sh {} |
+    uniq --skip-fields=1 # Necessary because xargs sometimes creates duplicates
+)
+files_by_size=$(cd ${vnfs_dir};
+    find .${VNFS_SUBDIR} -type f -print0 | xargs -0 du | sort -un | cut -f2 |
+    grep -v -F "$current_excludes" |
+    tail -n ${FILE_COUNT} |
+    xargs -I{} du -sh {} |
+    uniq --skip-fields=1 # Necessary because xargs sometimes creates duplicates
+)
+
+
+# Print the recommendations along with their sizes
+echo "Large directories to consider hybridizing:"
+echo "------------------------------------------"
+echo "$directories_by_size"
+echo
+echo
+echo "Large files to consider hybridizing:"
+echo "------------------------------------"
+echo "$files_by_size"
+echo
+
