@@ -46,22 +46,23 @@ mcms_check_exe awk cat cut du find grep sed sort tail wwsh xargs
 
 
 function help() {
-    echo
-    echo -e "Examine OpenHPC/Warewulf VNFS images to suggest memory space savings."
-    echo
-    echo -e "Usage: `basename $0` [options]"
-    echo
-    echo -e "Optional arguments:"
-    echo -e "\t -c: number of files and directories to suggest (default: ${FILE_COUNT})"
-    echo -e "\t -d: subdirectory of the VNFS to explore"
-    echo -e "\t -n: name of the VNFS to examine - available options:"
-    # List available Warewulf VNFS images
-    wwsh vnfs list | awk '!/VNFS NAME/ {print "\t\t",$1}'
+    echo "
 
-    echo
-    echo "Copyright (c) 2016 by Microway, Inc."
-    echo "This software is released under the GNU General Public License v3"
-    echo
+Examine OpenHPC/Warewulf VNFS images to suggest memory space savings.
+
+Usage: $(basename $0) [options]
+
+Optional arguments:
+    -n: name of the VNFS to examine - available options:
+$(wwsh vnfs list | awk '!/VNFS NAME/ {print "\t",$1}')
+
+    -c: number of files and directories to suggest (default: ${FILE_COUNT})
+    -d: subdirectory of the VNFS to explore
+
+Copyright (c) 2016 by Microway, Inc.
+This software is released under the GNU General Public License v3
+
+"
 }
 
 function parse_options() {
@@ -134,9 +135,9 @@ current_excludes=$(
 )
 
 
-echo -n "Current list of excludes and hybrid paths: "
-echo $current_excludes
-echo
+echo "Current list of excludes and hybrid paths:
+$current_excludes
+"
 
 
 # Get a list of the files and directories sorted by size (smallest to largest)
@@ -158,13 +159,16 @@ files_by_size=$(cd ${vnfs_dir};
 
 
 # Print the recommendations along with their sizes
-echo "Large directories to consider hybridizing:"
-echo "------------------------------------------"
-echo "$directories_by_size"
-echo
-echo
-echo "Large files to consider hybridizing:"
-echo "------------------------------------"
-echo "$files_by_size"
-echo
+echo "
+
+Large directories to consider hybridizing:
+------------------------------------------------------------------------------
+$directories_by_size
+
+
+Large files to consider hybridizing:
+------------------------------------------------------------------------------
+$files_by_size
+
+"
 
