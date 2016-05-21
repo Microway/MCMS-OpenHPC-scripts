@@ -39,7 +39,7 @@ FILE_COUNT=20
 # Check environment health
 source "/usr/libexec/mcms/include.sh" || (echo "
 
-Unable to read the MCMS script library - does /usr/libexec/mcms/include.sh exist?
+Unable to read MCMS script library - does /usr/libexec/mcms/include.sh exist?
 
 "; exit 1)
 mcms_check_exe awk cat cut du find grep sed sort tail wwsh xargs
@@ -50,10 +50,17 @@ function help() {
 
 Examine OpenHPC/Warewulf VNFS images to suggest memory space savings.
 
+VNFS images shouldn't grow too large, as that hogs memory on the systems which
+must load the VNFS into memory. This tool examines which portions of the image
+have already been hybridized and makes further suggestions.
+
+Smaller VNFS images will also download to the nodes faster and boot faster.
+
+
 Usage: $(basename $0) [options]
 
 Optional arguments:
-    -n: name of the VNFS to examine - available options:
+    -n: name of the VNFS to examine; the currently available VNFS images:
 $(wwsh vnfs list | awk '!/VNFS NAME/ {print "\t",$1}')
 
     -c: number of files and directories to suggest (default: ${FILE_COUNT})
@@ -169,6 +176,10 @@ $directories_by_size
 Large files to consider hybridizing:
 ------------------------------------------------------------------------------
 $files_by_size
+
+
+To hybridize any of the above, edit the configuration file:
+/etc/warewulf/vnfs/${VNFS_NAME}.conf
 
 "
 

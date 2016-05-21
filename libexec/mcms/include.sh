@@ -2,7 +2,7 @@
 ######################## Microway Cluster Management Software (MCMS) for OpenHPC
 ################################################################################
 #
-# Copyright (c) 2015 by Microway, Inc.
+# Copyright (c) 2015-2016 by Microway, Inc.
 #
 # This file is part of Microway Cluster Management Software (MCMS) for OpenHPC.
 #
@@ -31,7 +31,7 @@
 #
 #    source "/usr/libexec/mcms/include.sh" || (echo "
 #
-#    Unable to read the MCMS script library - does /usr/libexec/mcms/include.sh exist?
+#    Unable to read MCMS script library - does /usr/libexec/mcms/include.sh exist?
 #
 #    "; exit 1)
 #
