@@ -31,10 +31,6 @@
 #
 ################################################################################
 
-VNFS_NAME="default-compute-node"
-VNFS_SUBDIR=""
-FILE_COUNT=20
-
 
 # Check environment health
 source "/usr/libexec/mcms/include.sh" || (echo "
@@ -57,12 +53,9 @@ have already been hybridized and makes further suggestions.
 Smaller VNFS images will also download to the nodes faster and boot faster.
 
 
-Usage: $(basename $0) [options]
+Usage: $(basename $0) [options] vnfs_name
 
 Optional arguments:
-    -n: name of the VNFS to examine; the currently available VNFS images:
-$(wwsh vnfs list | awk '!/VNFS NAME/ {print "\t",$1}')
-
     -c: number of files and directories to suggest (default: ${FILE_COUNT})
     -d: subdirectory of the VNFS to explore
 
@@ -73,7 +66,7 @@ This software is released under the GNU General Public License v3
 }
 
 function parse_options() {
-    while getopts ":c:d:h:n:" opt; do
+    while getopts ":c:d:h:" opt; do
         case $opt in
             c)
                 # make sure -c is passed a valid integer
@@ -86,20 +79,6 @@ function parse_options() {
             d)
                 VNFS_SUBDIR=$OPTARG
                 ;;
-            n)
-                VNFS_NAME=$OPTARG
-
-                # make sure a valid VNFS name was passed
-                output=$(wwsh vnfs list | awk "/$VNFS_NAME/")
-
-                if [[ -z "$output" ]]; then
-                    wwsh_vnfs_list=$(wwsh vnfs list | awk '!/VNFS NAME/ {print $0}')
-                    log_error "There is not a VNFS image named '$VNFS_NAME'." \
-                              "\nAvailable options:" \
-                              "\n\nVNFS NAME            SIZE (M) CHROOT LOCATION" \
-                              "\n${wwsh_vnfs_list}"
-                fi
-                ;;
             h)
                 help
                 exit 0
@@ -110,9 +89,30 @@ function parse_options() {
                 ;;
         esac
     done
+
+
+    # Retrieve the positional argument(s)
+    VNFS_NAME=${@:$OPTIND:1}
+
+    if [[ -z "$VNFS_NAME" ]]; then
+        log_error "A VNFS image name was not specified. You must specify one!"
+    fi
+
+    # make sure a valid VNFS name was passed
+    output=$(wwsh vnfs list | awk "/$VNFS_NAME/")
+    if [[ -z "$output" ]]; then
+        wwsh_vnfs_list=$(wwsh vnfs list | awk '!/VNFS NAME/ {print $0}')
+        log_error "There is not a VNFS image named '$VNFS_NAME'.
+                  \nAvailable options:
+                  \n\nVNFS NAME            SIZE (M) CHROOT LOCATION
+                  \n${wwsh_vnfs_list}"
+    fi
 }
 
+
 # Parse the command line options
+VNFS_SUBDIR=""
+FILE_COUNT=20
 parse_options "$@"
 
 
