@@ -160,17 +160,17 @@ if [[ "${FAST_COPY_MODE}" != "true" ]]; then
         log_error "
 
         There is not enough disk space remaining to make a copy of the VNFS. It
-        requires ${old_vnfs_size}. Currently, the destination directory
-        ($EXISTING_VNFS_DIR) has ${available_space_vnfs} of free space.
+        requires ${old_vnfs_size} KB. Currently, the destination directory
+        ($EXISTING_VNFS_DIR) has ${available_space_vnfs} KB of free space.
 
         "
     fi
     if [[ $available_space_var -le $old_vnfs_size ]]; then
         log_error "
 
-        There is not enough disk space remaining in /var to build the new VNFS. It
-        will require ~${old_vnfs_size}. Currently, the /var directory has
-        ${available_space_vnfs} of free space remaining.
+        There is not enough disk space remaining in /var to build the new VNFS.
+        It will require ~${old_vnfs_size} KB. Currently, the /var directory has
+        ${available_space_vnfs} KB of free space remaining.
 
         "
     fi
@@ -188,4 +188,13 @@ sed -i "s+${EXISTING_VNFS_DIR}/${EXISTING_VNFS_NAME}+${NEW_VNFS_DIR}/${NEW_VNFS_
 # Import the files into a new VNFS
 log_info "Importing the VNFS directory into Warewulf..."
 wwvnfs ${NEW_VNFS_NAME} --chroot=${NEW_VNFS_DIR}/${NEW_VNFS_NAME} --hybridpath=/vnfs
+
+log_info "
+
+Clone is complete. Review the new VNFS config file:
+/etc/warewulf/vnfs/${NEW_VNFS_NAME}.conf
+
+Take note that exclude/hybridization settings were not automatically copied.
+
+"
 
