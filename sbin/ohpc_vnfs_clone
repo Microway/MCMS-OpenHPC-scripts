@@ -1,0 +1,191 @@
+#!/bin/bash
+################################################################################
+######################## Microway Cluster Management Software (MCMS) for OpenHPC
+################################################################################
+#
+# Copyright (c) 2015-2016 by Microway, Inc.
+#
+# This file is part of Microway Cluster Management Software (MCMS) for OpenHPC.
+#
+#    MCMS for OpenHPC is free software: you can redistribute it and/or modify
+#    it under the terms of the GNU General Public License as published by
+#    the Free Software Foundation, either version 3 of the License, or
+#    (at your option) any later version.
+#
+#    MCMS for OpenHPC is distributed in the hope that it will be useful,
+#    but WITHOUT ANY WARRANTY; without even the implied warranty of
+#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#    GNU General Public License for more details.
+#
+#    You should have received a copy of the GNU General Public License
+#    along with MCMS.  If not, see <http://www.gnu.org/licenses/>
+#
+################################################################################
+
+
+################################################################################
+#
+# Clone an existing Compute Node VNFS image.
+#
+################################################################################
+
+
+# Check environment health
+source "/usr/libexec/mcms/include.sh" || (echo "
+
+Unable to read MCMS script library - does /usr/libexec/mcms/include.sh exist?
+
+"; exit 1)
+mcms_check_exe dirname du df awk cp sed wwsh wwvnfs
+
+
+function help() {
+    echo "
+
+Clone an existing OpenHPC/Warewulf VNFS image into the specified name
+
+Usage: $(basename $0) [options] existing_vnfs new_vnfs
+
+Optional arguments:
+    -d: Specify the directory into which the new VNFS image should be placed. By
+        default, it will be put into the same directory as the existing image.
+
+    -f: Fast mode - do not check the available disk space before copying.
+
+Copyright (c) 2015-2016 by Microway, Inc.
+This software is released under the GNU General Public License v3
+
+"
+}
+
+function parse_options() {
+    while getopts ":d:f:h:" opt; do
+        case $opt in
+            d)
+                NEW_VNFS_DIR="$OPTARG"
+                ;;
+            f)
+                FAST_COPY_MODE="true"
+                ;;
+            h)
+                help
+                exit 0
+                ;;
+            \?|:)
+                help
+                exit 1
+                ;;
+        esac
+    done
+
+
+    # Retrieve the positional argument(s)
+    EXISTING_VNFS_NAME=${@:$OPTIND:1}
+    NEW_VNFS_NAME=${@:$OPTIND+1:1}
+
+    if [[ -z "$EXISTING_VNFS_NAME" ]]; then
+        log_error "An existing VNFS image name was not specified. You must specify one!"
+    fi
+
+    if [[ -z "$NEW_VNFS_NAME" ]]; then
+        log_error "You must specify the name for the new VNFS!"
+    fi
+
+    # make sure a valid existing VNFS name was passed
+    output=$(wwsh vnfs list | awk "/$EXISTING_VNFS_NAME/")
+    if [[ -z "$output" ]]; then
+        wwsh_vnfs_list=$(wwsh vnfs list | awk '!/VNFS NAME/ {print $0}')
+        log_error "
+
+        There is not a VNFS image named '$EXISTING_VNFS_NAME'.
+
+        Available options:
+
+        VNFS NAME            SIZE (M) CHROOT LOCATION
+        ${wwsh_vnfs_list}
+
+        "
+    fi
+
+    # make sure the new VNFS name doesn't conflict with an existing name
+    output=$(wwsh vnfs list | awk "/$NEW_VNFS_NAME/")
+    if [[ ! -z "$output" ]]; then
+        log_error "
+
+        There is already a VNFS image named '$NEW_VNFS_NAME'.
+
+        Please select another name.
+
+        "
+    fi
+}
+
+
+# Parse the command line options
+parse_options "$@"
+
+
+EXISTING_VNFS_DIR=$(wwsh vnfs list | awk "/$EXISTING_VNFS_NAME/ {print \$3}")
+EXISTING_VNFS_DIR=$(dirname $EXISTING_VNFS_DIR)
+NEW_VNFS_DIR="${NEW_VNFS_DIR:-$EXISTING_VNFS_DIR}"
+FAST_COPY_MODE="${FAST_COPY_MODE:-false}"
+
+
+if [[ ! -d "${EXISTING_VNFS_DIR}/${EXISTING_VNFS_NAME}" ]]; then
+    log_error "
+
+    Unable to read the existing VNFS - please check this PATH:
+    ${EXISTING_VNFS_DIR}/${EXISTING_VNFS_NAME}
+
+    "
+fi
+if [[ -d "${NEW_VNFS_DIR}/${NEW_VNFS_NAME}" || -f "${NEW_VNFS_DIR}/${NEW_VNFS_NAME}" ]]; then
+    log_error "
+
+    The new VNFS directory already exists - please check this PATH:
+    ${NEW_VNFS_DIR}/${NEW_VNFS_NAME}
+
+    "
+fi
+
+
+# Check for enough free space
+if [[ "${FAST_COPY_MODE}" != "true" ]]; then
+    du_output=( $(du -s ${EXISTING_VNFS_DIR}/${EXISTING_VNFS_NAME}) )
+    old_vnfs_size=${du_output[0]}
+    available_space_vnfs=$(df ${NEW_VNFS_DIR}/ | awk '/\// {print $4}')
+    available_space_var=$(df /var | awk '/\// {print $4}')
+
+    if [[ $available_space_vnfs -le $old_vnfs_size ]]; then
+        log_error "
+
+        There is not enough disk space remaining to make a copy of the VNFS. It
+        requires ${old_vnfs_size}. Currently, the destination directory
+        ($EXISTING_VNFS_DIR) has ${available_space_vnfs} of free space.
+
+        "
+    fi
+    if [[ $available_space_var -le $old_vnfs_size ]]; then
+        log_error "
+
+        There is not enough disk space remaining in /var to build the new VNFS. It
+        will require ~${old_vnfs_size}. Currently, the /var directory has
+        ${available_space_vnfs} of free space remaining.
+
+        "
+    fi
+fi
+
+
+# Copy the files of the Linux template
+log_info "Copying files into new VNFS directory..."
+cp -a ${EXISTING_VNFS_DIR}/${EXISTING_VNFS_NAME} ${NEW_VNFS_DIR}/${NEW_VNFS_NAME}
+
+# Update the VNFS nfs mount inside the compute node install
+sed -i "s+${EXISTING_VNFS_DIR}/${EXISTING_VNFS_NAME}+${NEW_VNFS_DIR}/${NEW_VNFS_NAME}+" \
+       ${NEW_VNFS_DIR}/${NEW_VNFS_NAME}/etc/fstab
+
+# Import the files into a new VNFS
+log_info "Importing the VNFS directory into Warewulf..."
+wwvnfs ${NEW_VNFS_NAME} --chroot=${NEW_VNFS_DIR}/${NEW_VNFS_NAME} --hybridpath=/vnfs
+
