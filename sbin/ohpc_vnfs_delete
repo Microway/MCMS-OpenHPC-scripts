@@ -1,0 +1,146 @@
+#!/bin/bash
+################################################################################
+######################## Microway Cluster Management Software (MCMS) for OpenHPC
+################################################################################
+#
+# Copyright (c) 2016 by Microway, Inc.
+#
+# This file is part of Microway Cluster Management Software (MCMS) for OpenHPC.
+#
+#    MCMS for OpenHPC is free software: you can redistribute it and/or modify
+#    it under the terms of the GNU General Public License as published by
+#    the Free Software Foundation, either version 3 of the License, or
+#    (at your option) any later version.
+#
+#    MCMS for OpenHPC is distributed in the hope that it will be useful,
+#    but WITHOUT ANY WARRANTY; without even the implied warranty of
+#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#    GNU General Public License for more details.
+#
+#    You should have received a copy of the GNU General Public License
+#    along with MCMS.  If not, see <http://www.gnu.org/licenses/>
+#
+################################################################################
+
+
+################################################################################
+#
+# Delete a Compute Node VNFS image (if it is safe to do so).
+#
+################################################################################
+
+
+# Check environment health
+source "/usr/libexec/mcms/include.sh" || (echo "
+
+Unable to read MCMS script library - does /usr/libexec/mcms/include.sh exist?
+
+"; exit 1)
+mcms_check_exe awk grep rm wwsh
+
+
+function help() {
+    echo "
+
+Delete a OpenHPC/Warewulf VNFS image (after checking it is not in use).
+
+Usage: $(basename $0) [options] vnfs_name
+
+Optional arguments:
+    -f: Force - do not check if this image is being used by compute nodes
+
+Copyright (c) 2016 by Microway, Inc.
+This software is released under the GNU General Public License v3
+
+"
+}
+
+function parse_options() {
+    while getopts ":f:h:" opt; do
+        case $opt in
+            f)
+                FORCE_DELETE="true"
+                ;;
+            h)
+                help
+                exit 0
+                ;;
+            \?|:)
+                help
+                exit 1
+                ;;
+        esac
+    done
+
+
+    # Retrieve the positional argument(s)
+    VNFS_NAME=${@:$OPTIND:1}
+
+    if [[ -z "$VNFS_NAME" ]]; then
+        log_error "A VNFS image name was not specified. You must specify one!"
+    fi
+
+    # make sure a valid existing VNFS name was passed
+    output=$(wwsh vnfs list | awk "/$VNFS_NAME/")
+    if [[ -z "$output" ]]; then
+        wwsh_vnfs_list=$(wwsh vnfs list | awk '!/VNFS NAME/ {print $0}')
+        log_error "
+
+        There is not a VNFS image named '$VNFS_NAME'.
+
+        Available options:
+
+        VNFS NAME            SIZE (M) CHROOT LOCATION
+        ${wwsh_vnfs_list}
+
+        "
+    fi
+}
+
+
+# Parse the command line options
+parse_options "$@"
+
+
+FORCE_DELETE="${FORCE_DELETE:-false}"
+
+
+# make sure the VNFS is not in use
+output=$(wwsh provision list 2>/dev/null |
+         awk '{print $2}' | grep "${VNFS_NAME}" || true) # mask any errors
+         # wwsh provision returns a spurious error code when printing the list
+if [[ ! -z "$output" ]]; then
+    if [[ "${FORCE_DELETE}" != "true" ]]; then
+        node_list=$(wwsh provision list |
+                    awk "/${VNFS_NAME}/ {print \$1}" || true) # mask any errors
+        # wwsh provision returns a spurious error code when printing the list
+
+        log_error "
+
+        This VNFS is still in use by compute nodes:
+
+        ${node_list}
+
+        "
+    fi
+fi
+
+
+vnfs_config_file="/etc/warewulf/vnfs/${VNFS_NAME}.conf"
+
+vnfs_dir=$(wwsh vnfs list | grep "${VNFS_NAME}" | awk '{print $3}')
+if [[ ! -d $vnfs_dir ]]; then
+    log_error "The VNFS directory $vnfs_dir does not exist!"
+fi
+
+
+# Perform the removal
+log_info "Removing VNFS '${VNFS_NAME}' from the Warewulf database..."
+wwsh vnfs delete -y ${VNFS_NAME}
+
+log_info "Removing the VNFS directory ${vnfs_dir}..."
+rm -Rf ${vnfs_dir}
+
+log_info "Removing the VNFS configuration file ${vnfs_config_file}..."
+rm -f ${vnfs_config_file}
+
