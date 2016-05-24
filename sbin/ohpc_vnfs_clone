@@ -92,7 +92,7 @@ function parse_options() {
     fi
 
     # make sure a valid existing VNFS name was passed
-    output=$(wwsh vnfs list | awk "/$EXISTING_VNFS_NAME/")
+    output=$(wwsh vnfs list | awk "/^$EXISTING_VNFS_NAME /")
     if [[ -z "$output" ]]; then
         wwsh_vnfs_list=$(wwsh vnfs list | awk '!/VNFS NAME/ {print $0}')
         log_error "
@@ -108,7 +108,7 @@ function parse_options() {
     fi
 
     # make sure the new VNFS name doesn't conflict with an existing name
-    output=$(wwsh vnfs list | awk "/$NEW_VNFS_NAME/")
+    output=$(wwsh vnfs list | awk "/^$NEW_VNFS_NAME /")
     if [[ ! -z "$output" ]]; then
         log_error "
 
