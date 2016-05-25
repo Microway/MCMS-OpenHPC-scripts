@@ -84,7 +84,17 @@ function parse_options() {
     NEW_VNFS_NAME=${@:$OPTIND+1:1}
 
     if [[ -z "$EXISTING_VNFS_NAME" ]]; then
-        log_error "An existing VNFS image name was not specified. You must specify one!"
+        wwsh_vnfs_list=$(wwsh vnfs list | awk '!/VNFS NAME/ {print $0}')
+        log_error "
+
+        An existing VNFS image name was not specified. You must specify one!
+
+        Available options:
+
+        VNFS NAME            SIZE (M) CHROOT LOCATION
+        ${wwsh_vnfs_list}
+
+        "
     fi
 
     if [[ -z "$NEW_VNFS_NAME" ]]; then
