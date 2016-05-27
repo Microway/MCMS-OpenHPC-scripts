@@ -3,7 +3,7 @@
 ######################## Microway Cluster Management Software (MCMS) for OpenHPC
 ################################################################################
 #
-# Copyright (c) 2015 by Microway, Inc.
+# Copyright (c) 2015-2016 by Microway, Inc.
 #
 # This file is part of Microway Cluster Management Software (MCMS) for OpenHPC.
 #
@@ -39,6 +39,7 @@
 #   x86_64__Intel-SandyBridge      (optimized)
 #   x86_64__Intel-IvyBridge        (optimized)
 #   x86_64__Intel-Haswell          (optimized)
+#   x86_64__Intel-Broadwell        (optimized)
 #
 ################################################################################
 
@@ -74,6 +75,8 @@ if [[ $cpuinfo_family -eq 6 ]]; then
         cpu_architecture="x86_64__Intel-IvyBridge"
     elif [[ $cpuinfo_model -eq 63 ]]; then
         cpu_architecture="x86_64__Intel-Haswell"
+    elif [[ $cpuinfo_model -eq 79 ]]; then
+        cpu_architecture="x86_64__Intel-Broadwell"
     fi
 elif [[ $cpuinfo_family -eq 21 ]]; then
     cpu_architecture="x86_64"
