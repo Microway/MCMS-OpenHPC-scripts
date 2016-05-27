@@ -36,3 +36,7 @@ https://www.microway.com/contact/
 To learn more about OpenHPC, visit:
 http://www.openhpc.community/
 
+
+### Author & Credits
+The `slurm` script is written and maintained by Janne Blomqvist of Aalto University
+
