@@ -135,7 +135,7 @@ function parse_options() {
 parse_options "$@"
 
 
-EXISTING_VNFS_DIR=$(wwsh vnfs list | awk "/$EXISTING_VNFS_NAME/ {print \$3}")
+EXISTING_VNFS_DIR=$(wwsh vnfs list | awk "/^$EXISTING_VNFS_NAME / {print \$3}")
 EXISTING_VNFS_DIR=$(dirname $EXISTING_VNFS_DIR)
 NEW_VNFS_DIR="${NEW_VNFS_DIR:-$EXISTING_VNFS_DIR}"
 FAST_COPY_MODE="${FAST_COPY_MODE:-false}"
