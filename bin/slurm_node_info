@@ -40,8 +40,8 @@ else
     extra_columns=$(( $available_columns - 85 ))
     margin=$(( $extra_columns / 8 ))
 
-    gres_length=$(( 8 + $margin ))
-    feature_length=$(( 15 + $margin * 6 ))
+    gres_length=$(( 15 + $margin * 4 ))
+    feature_length=$(( 8 + $margin * 3 ))
 
     format="%15N %11T %.4c %.8z %.9m %.10d %${gres_length}G %${feature_length}f"
 fi
