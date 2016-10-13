@@ -63,9 +63,11 @@ function parse_options() {
         case $opt in
             d)
                 NEW_VNFS_DIR="$OPTARG"
+                shift
                 ;;
             f)
                 FAST_COPY_MODE="true"
+                shift
                 ;;
             h)
                 help
@@ -80,8 +82,8 @@ function parse_options() {
 
 
     # Retrieve the positional argument(s)
-    EXISTING_VNFS_NAME=${@:$OPTIND:1}
-    NEW_VNFS_NAME=${@:$OPTIND+1:1}
+    EXISTING_VNFS_NAME=${1:-}
+    NEW_VNFS_NAME=${2:-}
 
     if [[ -z "$EXISTING_VNFS_NAME" ]]; then
         wwsh_vnfs_list=$(wwsh vnfs list | awk '!/VNFS NAME/ {print $0}')
