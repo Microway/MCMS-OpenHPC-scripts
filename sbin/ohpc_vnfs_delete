@@ -107,12 +107,12 @@ FORCE_DELETE="${FORCE_DELETE:-false}"
 
 # make sure the VNFS is not in use
 output=$(wwsh provision list 2>/dev/null |
-         awk '{print $2}' | grep "${VNFS_NAME}" || true) # mask any errors
+         awk "/${VNFS_NAME} / {print \$2}" || true) # mask any errors
          # wwsh provision returns a spurious error code when printing the list
 if [[ ! -z "$output" ]]; then
     if [[ "${FORCE_DELETE}" != "true" ]]; then
         node_list=$(wwsh provision list |
-                    awk "/${VNFS_NAME}/ {print \$1}" || true) # mask any errors
+                    awk "/${VNFS_NAME} / {print \$1}" || true) # mask any errors
         # wwsh provision returns a spurious error code when printing the list
 
         log_error "
@@ -128,7 +128,7 @@ fi
 
 vnfs_config_file="/etc/warewulf/vnfs/${VNFS_NAME}.conf"
 
-vnfs_dir=$(wwsh vnfs list | grep "${VNFS_NAME}" | awk '{print $3}')
+vnfs_dir=$(wwsh vnfs list | awk "/${VNFS_NAME} / {print \$3}")
 if [[ ! -d $vnfs_dir ]]; then
     log_error "The VNFS directory $vnfs_dir does not exist!"
 fi
